@@ -1,9 +1,10 @@
 (function () {
   'use strict';
 
-  var form        = document.getElementById('contactForm');
-  var successMsg  = document.getElementById('contactSuccessMsg');
-  var errorMsg    = document.getElementById('contactErrorMsg');
+  var form = document.getElementById('contactForm');
+  var submitBtn = document.getElementById('contactSubmitBtn');
+  var successMsg = document.getElementById('contactSuccessMsg');
+  var errorMsg = document.getElementById('contactErrorMsg');
 
   function showMsg(el, duration) {
     el.style.display = 'block';
@@ -13,49 +14,59 @@
   }
 
   function resetForm() {
-    form.querySelectorAll('input:not([type="submit"]), textarea').forEach(function (el) {
+    form.querySelectorAll('input:not([type="submit"]):not([type="hidden"]), textarea').forEach(function (el) {
       el.value = '';
     });
   }
 
   if (!form) return;
 
-  form.addEventListener('submit', function (e) {
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    var name    = (document.getElementById('name')    || {}).value || '';
-    var email   = (document.getElementById('email')   || {}).value || '';
-    var phone   = (document.getElementById('phone')   || {}).value || '';
-    var subject = (document.getElementById('subject') || {}).value || '';
-    var message = (document.getElementById('message') || {}).value || '';
+    var name = (document.getElementById('name') || {}).value || '';
+    var email = (document.getElementById('email') || {}).value || '';
 
     // Basic validation — name and email are required
     if (!name.trim() || !email.trim()) {
+      errorMsg.textContent = '⚠️ Please fill in all required fields (Name and Email).';
       showMsg(errorMsg, 4000);
       return;
     }
 
-    // Build mailto body
-    var body = [
-      'Name: '    + name,
-      'Email: '   + email,
-      'Phone: '   + (phone   || 'N/A'),
-      '',
-      'Message:',
-      message     || '(no message)'
-    ].join('%0D%0A');
+    var originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Sending...';
+    submitBtn.disabled = true;
 
-    var mailtoLink =
-      'mailto:geococosimpex@gmail.com' +
-      '?subject=' + encodeURIComponent(subject || 'Enquiry from GeCocos Website') +
-      '&body='    + body;
+    // Hide any previous messages
+    successMsg.style.display = 'none';
+    errorMsg.style.display = 'none';
 
-    // Open default mail client
-    window.location.href = mailtoLink;
+    var formData = new FormData(form);
 
-    // Show success feedback and clear the form
-    showMsg(successMsg, 5000);
-    resetForm();
+    try {
+      var response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData
+      });
+
+      var data = await response.json();
+
+      if (response.ok) {
+        successMsg.textContent = '✅ Thank you! Your message has been sent successfully.';
+        showMsg(successMsg, 5000);
+        resetForm();
+      } else {
+        errorMsg.textContent = '⚠️ Error: ' + (data.message || 'Something went wrong.');
+        showMsg(errorMsg, 5000);
+      }
+    } catch (error) {
+      errorMsg.textContent = '⚠️ Something went wrong. Please try again.';
+      showMsg(errorMsg, 5000);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
   });
 
 })();
